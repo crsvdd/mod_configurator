@@ -23,7 +23,7 @@ if file:
     data = load_mod_data(file)
     
     if data:
-        # Определение языка
+        # Определение доступных языков
         sample_feat = next(iter(data.get("@features", {}).values()))
         available_langs = list(sample_feat.get("@name", {"EN": "EN"}).keys())
         lang = st.selectbox("Language", available_langs)
@@ -44,9 +44,10 @@ if file:
             if f_id not in grouped_f_ids and "@type" not in f_info:
                 f_name = f_info.get("@name", {}).get(lang, f_id)
                 f_desc = f_info.get("@description", {}).get(lang, "")
-                is_enabled = f_info.get("@enabled", False)
+                
+                # ИЗМЕНЕНИЕ: Если @enabled нет, по умолчанию True
+                is_enabled = f_info.get("@enabled", True)
 
-                # Создаем две колонки: для текста и для тумблера справа
                 col1, col2 = st.columns([0.8, 0.2])
                 with col1:
                     st.write(f"**{f_name}**")
@@ -70,7 +71,9 @@ if file:
                     f_info = features.get(f_id, {})
                     f_display = f_info.get("@name", {}).get(lang, f_id)
                     options_map[f_display] = f_id
-                    if f_info.get("@enabled") is True:
+                    
+                    # ИЗМЕНЕНИЕ: Если @enabled нет, считаем True (для выбора по умолчанию в Radio)
+                    if f_info.get("@enabled", True) is True:
                         default_idx = i
                 
                 if g_info.get("@type") == "RADIO_GROUP":
@@ -79,16 +82,15 @@ if file:
                     for f_id in f_ids_in_group:
                         new_states[f_id] = (f_id == selected_id)
                 else:
-                    # Если вдруг в группе не RADIO_GROUP, выводим тумблерами
                     for f_id in f_ids_in_group:
                         f_info = features.get(f_id, {})
                         f_name = f_info.get("@name", {}).get(lang, f_id)
-                        new_states[f_id] = st.toggle(f_name, value=f_info.get("@enabled", False), key=f_id)
+                        # ИЗМЕНЕНИЕ: Если @enabled нет, по умолчанию True
+                        new_states[f_id] = st.toggle(f_name, value=f_info.get("@enabled", True), key=f_id)
 
         # --- СБОРКА ---
         st.divider()
         if st.button("Применить и скачать"):
-            # Обновляем JSON
             for f_id, val in new_states.items():
                 if f_id in data["@features"]:
                     data["@features"][f_id]["@enabled"] = val
