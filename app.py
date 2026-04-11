@@ -6,24 +6,31 @@ import io
 # 1. Настройка страницы
 st.set_page_config(page_title="Mod Configurator", layout="centered")
 
-# 2. Шрифты и CSS
+# 2. Шрифты и CSS стили
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lilita+One&family=Montserrat:wght@900&display=swap');
     
+    /* Выравнивание колонок для тумблеров */
     [data-testid="column"] {
         display: flex;
         align-items: center;
         justify-content: space-between;
     }
     
-    /* Стиль для текста описания внутри групп */
+    /* Стиль описания функций */
     .feature-desc {
         font-size: 0.85rem;
         color: #888;
-        margin-bottom: 10px;
-        margin-top: -5px;
+        margin-bottom: 12px;
+        margin-top: -8px;
+    }
+
+    /* Убираем лишние отступы у заголовков групп */
+    h2 {
+        margin-top: 2rem !important;
+        margin-bottom: 1rem !important;
     }
     </style>
     """,
@@ -53,13 +60,9 @@ if file:
         available_langs = list(sample_feat.get("@name", {"EN": "EN"}).keys())
         lang = st.selectbox("Language", available_langs)
 
-        # Динамический шрифт
-        if lang == "RU":
-            font_family = "'Montserrat', sans-serif"
-            font_weight = "900"
-        else:
-            font_family = "'Lilita One', cursive"
-            font_weight = "400"
+        # Динамический шрифт (Montserrat для RU, Lilita One для остальных)
+        font_family = "'Montserrat', sans-serif" if lang == "RU" else "'Lilita One', cursive"
+        font_weight = "900" if lang == "RU" else "400"
 
         st.markdown(
             f"""
@@ -94,7 +97,7 @@ if file:
                 with col_text:
                     st.markdown(f"**{f_name}**")
                     if f_desc:
-                        st.caption(f_desc)
+                        st.markdown(f"<div class='feature-desc'>{f_desc}</div>", unsafe_allow_html=True)
                 with col_toggle:
                     new_states[f_id] = st.toggle("", value=is_enabled, key=f_id, label_visibility="collapsed")
 
@@ -103,56 +106,61 @@ if file:
             st.markdown("---")
             for g_id, g_info in groups.items():
                 g_name = g_info.get("@name", {}).get(lang, g_id)
-                st.header(g_name) # Чистое название из JSON
+                st.header(g_name)
                 
                 f_ids_in_group = g_info.get("@features", [])
-                options_map = {}
-                default_idx = 0
-                
-                for i, f_id in enumerate(f_ids_in_group):
-                    f_info = features.get(f_id, {})
-                    f_display = f_info.get("@name", {}).get(lang, f_id)
-                    options_map[f_display] = f_id
-                    if f_info.get("@enabled", True) is True:
-                        default_idx = i
                 
                 if g_info.get("@type") == "RADIO_GROUP":
-                    options_list = list(options_map.keys())
+                    options_display = []
+                    id_to_display = {}
+                    default_idx = 0
                     
-                    # Основной выбор в группе
-                    choice = st.radio(
-                        g_name, # Заголовок радио-кнопки
-                        options_list, 
-                        index=default_idx, 
-                        key=g_id,
-                        label_visibility="collapsed"
-                    )
-                    
-                    selected_id = options_map[choice]
-                    
-                    # ОТОБРАЖЕНИЕ ОПИСАНИЙ ДЛЯ ВСЕХ ФУНКЦИЙ ГРУППЫ
+                    for i, f_id in enumerate(f_ids_in_group):
+                        f_info = features.get(f_id, {})
+                        name = f_info.get("@name", {}).get(lang, f_id)
+                        options_display.append(name)
+                        id_to_display[name] = f_id
+                        if f_info.get("@enabled", True):
+                            default_idx = i
+
+                    # Описания всех функций группы перед выбором (как в JSON)
                     for f_id in f_ids_in_group:
                         f_info = features.get(f_id, {})
                         f_name = f_info.get("@name", {}).get(lang, f_id)
                         f_desc = f_info.get("@description", {}).get(lang, "")
-                        
-                        # Если функция выбрана в радио, подсвечиваем её или просто выводим текст
+                        st.markdown(f"**{f_name}**")
                         if f_desc:
-                            if f_id == selected_id:
-                                st.markdown(f"<div class='feature-desc'><b>{f_name}:</b> {f_desc}</div>", unsafe_allow_html=True)
-                            else:
-                                st.markdown(f"<div class='feature-desc'>{f_name}: {f_desc}</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div class='feature-desc'>{f_desc}</div>", unsafe_allow_html=True)
+
+                    # Радио-кнопка для выбора
+                    choice = st.radio(
+                        g_name,
+                        options_display,
+                        index=default_idx,
+                        key=g_id,
+                        label_visibility="collapsed"
+                    )
+                    selected_id = id_to_display[choice]
 
                     for f_id in f_ids_in_group:
                         new_states[f_id] = (f_id == selected_id)
                 
                 else:
+                    # Обычные тумблеры для групп без RADIO_GROUP
                     for f_id in f_ids_in_group:
                         f_info = features.get(f_id, {})
                         f_name = f_info.get("@name", {}).get(lang, f_id)
-                        new_states[f_id] = st.toggle(f_name, value=f_info.get("@enabled", True), key=f_id)
+                        f_desc = f_info.get("@description", {}).get(lang, "")
+                        
+                        col_t, col_b = st.columns([0.85, 0.15])
+                        with col_t:
+                            st.markdown(f"**{f_name}**")
+                            if f_desc:
+                                st.markdown(f"<div class='feature-desc'>{f_desc}</div>", unsafe_allow_html=True)
+                        with col_b:
+                            new_states[f_id] = st.toggle("", value=f_info.get("@enabled", True), key=f_id, label_visibility="collapsed")
 
-        # --- КНОПКА ---
+        # --- КНОПКА СКАЧИВАНИЯ ---
         st.divider()
         if st.button("Применить и скачать" if lang == "RU" else "Apply and Download", type="primary"):
             for f_id, val in new_states.items():
