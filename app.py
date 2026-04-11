@@ -6,20 +6,18 @@ import io
 # 1. Настройка страницы
 st.set_page_config(page_title="Mod Configurator", layout="centered")
 
-# 2. Шрифты и CSS стили
+# 2. Шрифты и CSS
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lilita+One&family=Montserrat:wght@900&display=swap');
     
-    /* Выравнивание колонок для тумблеров */
     [data-testid="column"] {
         display: flex;
         align-items: center;
         justify-content: space-between;
     }
     
-    /* Стиль описания функций */
     .feature-desc {
         font-size: 0.85rem;
         color: #888;
@@ -27,10 +25,9 @@ st.markdown(
         margin-top: -8px;
     }
 
-    /* Убираем лишние отступы у заголовков групп */
-    h2 {
-        margin-top: 2rem !important;
-        margin-bottom: 1rem !important;
+    /* Убираем лишние отступы у радио-кнопок для компактности */
+    [data-testid="stWidgetLabel"] {
+        display: none;
     }
     </style>
     """,
@@ -55,12 +52,10 @@ if file:
     data = load_mod_data(file)
     
     if data:
-        # Определение языков
         sample_feat = next(iter(data.get("@features", {}).values()))
         available_langs = list(sample_feat.get("@name", {"EN": "EN"}).keys())
         lang = st.selectbox("Language", available_langs)
 
-        # Динамический шрифт (Montserrat для RU, Lilita One для остальных)
         font_family = "'Montserrat', sans-serif" if lang == "RU" else "'Lilita One', cursive"
         font_weight = "900" if lang == "RU" else "400"
 
@@ -103,8 +98,8 @@ if file:
 
         # --- 2. ГРУППЫ ФУНКЦИЙ ---
         if groups:
-            st.markdown("---")
             for g_id, g_info in groups.items():
+                st.markdown("---") # Полоска ПЕРЕД каждой группой
                 g_name = g_info.get("@name", {}).get(lang, g_id)
                 st.header(g_name)
                 
@@ -118,27 +113,22 @@ if file:
                     for i, f_id in enumerate(f_ids_in_group):
                         f_info = features.get(f_id, {})
                         name = f_info.get("@name", {}).get(lang, f_id)
-                        options_display.append(name)
-                        id_to_display[name] = f_id
+                        desc = f_info.get("@description", {}).get(lang, "")
+                        
+                        # Объединяем имя и описание в одну строку для радио-кнопки
+                        display_text = f"{name}\n{desc}" if desc else name
+                        options_display.append(display_text)
+                        id_to_display[display_text] = f_id
+                        
                         if f_info.get("@enabled", True):
                             default_idx = i
 
-                    # Описания всех функций группы перед выбором (как в JSON)
-                    for f_id in f_ids_in_group:
-                        f_info = features.get(f_id, {})
-                        f_name = f_info.get("@name", {}).get(lang, f_id)
-                        f_desc = f_info.get("@description", {}).get(lang, "")
-                        st.markdown(f"**{f_name}**")
-                        if f_desc:
-                            st.markdown(f"<div class='feature-desc'>{f_desc}</div>", unsafe_allow_html=True)
-
-                    # Радио-кнопка для выбора
+                    # Выбор через радио
                     choice = st.radio(
                         g_name,
                         options_display,
                         index=default_idx,
-                        key=g_id,
-                        label_visibility="collapsed"
+                        key=g_id
                     )
                     selected_id = id_to_display[choice]
 
@@ -146,7 +136,6 @@ if file:
                         new_states[f_id] = (f_id == selected_id)
                 
                 else:
-                    # Обычные тумблеры для групп без RADIO_GROUP
                     for f_id in f_ids_in_group:
                         f_info = features.get(f_id, {})
                         f_name = f_info.get("@name", {}).get(lang, f_id)
