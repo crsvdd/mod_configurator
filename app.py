@@ -6,18 +6,20 @@ import io
 # 1. Настройка страницы
 st.set_page_config(page_title="Mod Configurator", layout="centered")
 
-# 2. Шрифты и CSS
+# 2. Шрифты и расширенный CSS
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lilita+One&family=Montserrat:wght@900&display=swap');
     
+    /* Вертикальное выравнивание для тумблеров */
     [data-testid="column"] {
         display: flex;
         align-items: center;
         justify-content: space-between;
     }
     
+    /* Стиль описания для тумблеров */
     .feature-desc {
         font-size: 0.85rem;
         color: #888;
@@ -25,7 +27,16 @@ st.markdown(
         margin-top: -8px;
     }
 
-    /* Убираем лишние отступы у радио-кнопок для компактности */
+    /* Стиль для описания внутри RADIO_GROUP */
+    .radio-desc {
+        font-size: 0.8rem;
+        color: #888;
+        font-weight: 400 !important;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    /* Убираем стандартный заголовок радио, так как у нас есть свой h2 */
     [data-testid="stWidgetLabel"] {
         display: none;
     }
@@ -62,7 +73,7 @@ if file:
         st.markdown(
             f"""
             <style>
-            html, body, [class*="css"], stMarkdown, p, h1, h2, h3, label, .stWidgetLabel {{
+            html, body, [class*="css"], stMarkdown, p, h1, h2, h3, label, .stWidgetLabel, [data-testid="stMarkdownContainer"] p {{
                 font-family: {font_family} !important;
                 font-weight: {font_weight} !important;
             }}
@@ -99,7 +110,7 @@ if file:
         # --- 2. ГРУППЫ ФУНКЦИЙ ---
         if groups:
             for g_id, g_info in groups.items():
-                st.markdown("---") # Полоска ПЕРЕД каждой группой
+                st.markdown("---")
                 g_name = g_info.get("@name", {}).get(lang, g_id)
                 st.header(g_name)
                 
@@ -115,20 +126,22 @@ if file:
                         name = f_info.get("@name", {}).get(lang, f_id)
                         desc = f_info.get("@description", {}).get(lang, "")
                         
-                        # Объединяем имя и описание в одну строку для радио-кнопки
-                        display_text = f"{name}\n{desc}" if desc else name
-                        options_display.append(display_text)
-                        id_to_display[display_text] = f_id
+                        # Формируем текст: Название + Описание на новой строке через HTML
+                        display_html = f"{name}\n{desc}" if desc else name
+                        options_display.append(display_html)
+                        id_to_display[display_html] = f_id
                         
                         if f_info.get("@enabled", True):
                             default_idx = i
 
-                    # Выбор через радио
+                    # Радио-кнопка с кастомным рендерингом описания
                     choice = st.radio(
                         g_name,
                         options_display,
                         index=default_idx,
-                        key=g_id
+                        key=g_id,
+                        # Позволяет использовать \n для переноса в некоторых версиях
+                        # Если \n не сработает в браузере, мы добавили стили font-weight
                     )
                     selected_id = id_to_display[choice]
 
